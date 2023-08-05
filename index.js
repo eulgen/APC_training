@@ -1,16 +1,18 @@
-const express = require("express");
-const dotenv = require("dotenv").config();
+//const express = require("express");
+require("dotenv").config();
 const morgan = require("morgan");
 const connectDb = require("./configs/dbconnection");
+const app = require("./middleware/middleware");
+
 
 connectDb();
 
-const app = express();
+//const app = express();
 
 const port = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use('/api/users',require(`./routes/routes`));
+// app.use(express.json());
+// app.use('/api/users',require(`./routes/routes`));
 // app.get('/',(req,res) => {
 //     res.status(200).json({message:"success"});
 // })
