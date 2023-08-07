@@ -2,37 +2,13 @@ const express = require("express");
 const users = require("../models/model");
 const validuser = require("../configs/validation");
 const bcrypt = require("bcrypt");
-//const passport = require("passport");
-const {check_user_email,check_user_password,passport} = require("../controllers/controllers");
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
+const {check_user_email,check_user_password,passport,get_userByEmail} = require("../controllers/controllers");
 
 
 const router = express.Router();
 
-
-router.post('/',async (req,res) => {
-    console.log("The request body is : ",req.body);
-    const {username,email,password} = req.body;
-    // if(!username || !email || !password){
-    //     res.status(400).json({message:"Username or Email or Password does not exist"});
-    // }
-    const {value,error} = validuser(req.body);
-    if(error){
-        res.status(400).json({message:error.details});
-    }else{
-        const hashedpass = await bcrypt.hash(password, 10);
-        const contact = users.create({
-            username,
-            email,
-            hashedpass
-        });
-        res.status(201).json(contact);
-    }
-});
-
-router.get('/',async(req,res) => {
-    const contacts = users.find();
-    res.status(200).json({message : contacts});
-});
 
 router.post('/register',(req,res) => {
     const {value,error} = validuser(req.body);
@@ -67,10 +43,6 @@ router.get('/auth/google/failure',(req,res) => {
  * @return {undefined}
  */
 function isLoggedIn(req,res,next){
-    // if(req.isAuthenticated()){
-    //     return next();
-    // }
-    // res.redirect("/auth/google");
     /* `req.user` is a property provided by Passport.js. It represents the currently authenticated
     user. In this code, `req.user` is used to check if a user is authenticated before allowing
     access to the protected route. If `req.user` exists (i.e., the user is authenticated), the
@@ -91,7 +63,7 @@ router.get('/auth/google/protected',isLoggedIn,async (req,res) => {
 
 // Route pour la création d'un nouvel utilisateur
 router.post('/signup', async (req, res) => {
-    const { username, email, password } = req.body;
+    var { username, email, password,country,state } = req.body;
 
     try {
         // Vérifier si l'utilisateur existe déjà
@@ -99,13 +71,12 @@ router.post('/signup', async (req, res) => {
         if (existingUser) {
             return res.status(409).json({ message: 'Cet email est déjà utilisé par un autre utilisateur' });
         }
-
         // Hasher le mot de passe avant de le stocker dans la base de données
-        const hashedPassword = await bcrypt.hash(password, 10);
+        password = await bcrypt.hash(password, 10);
 
         // Créer un nouvel utilisateur
-        const newUser = new users({ username, email, password: hashedPassword });
-        
+        const newUser = new users({ username,email,password,country,state});
+
         await newUser.save();
 
         res.status(201).json({ message: 'Compte créé avec succès' });
@@ -115,29 +86,55 @@ router.post('/signup', async (req, res) => {
     }
 });
 
-// // Route pour l'authentification de l'utilisateur
+router.get('/users_datas',async(req,res) => {
+    let usr=await users.find({});
+    res.status(200).json(usr);
+})
+
+router.get('/user_data/:id',async(req,res) => {
+    const user = await users.findById(req.params.id);
+    res.status(200).json(user);
+})
+
+router.put('/update/:id',async(req,res) => {
+    const user = await users.findById(req.params.id);
+    if(!user){
+        res.status(404).json({message:"User not found"});
+    }
+    const updateUser = users.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        {new:true}
+    );
+
+    res.status(200).json(updateUser);
+});
+
+router.delete('/delete/:id', async(req,res) => {
+    const user = await users.findById(req.params.id);
+    if(!user){
+        res.status(404).json({message:"User not found"});
+    }
+
+    await user.remove();
+
+    res.status(200).json({message:"user removed"});
+});
+
+//Route pour l'authentification de l'utilisateur
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     try {
         // Rechercher l'utilisateur dans la base de données par son email
         const user = await users.findOne({ email });
-        // if (!user) {
-        //     return res.status(401).json({ message: 'L\'email est incorrect' });
-        // }
-
-        // // Vérifier le mot de passe haché
-        // const isPasswordValid = await bcrypt.compare(password, user.password);
-        // if (!isPasswordValid) {
-        //     return res.status(401).json({ message: 'L\'email ou le mot de passe est incorrect' });
-        // }
 
         check_user_email(user);
 
         check_user_password(user,password);
 
         // Générer un JWT (JSON Web Token)
-        const token = jwt.sign({ userId: user._id }, 'ici, code secret', { expiresIn: '1h' });
+        const token = jwt.sign({ userId: user._id }, 'ici, code secret', { expiresIn: process.env.EXPIRE_TOKEN_TIME });
 
         res.status(200).json({ message: 'Authentification réussie', token });
     } catch (error) {

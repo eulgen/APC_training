@@ -14,11 +14,19 @@ const registerSchema = mongoose.Schema({
     },
     password:{
         type:String,
-        required:[true,"Please add the phone number"],
+        required:[true,"Please add the password"],
+    },
+    country:{
+        type:String,
+        required:[true,"Please add your country"],
+    },
+    state:{
+        type:String,
+        require:[true,"Please add your state"],
     }
 },
 {
     timestamps:true,
-})
+});
 
 module.exports = mongoose.model("users",registerSchema);

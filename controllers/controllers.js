@@ -1,5 +1,6 @@
 const passport = require("passport");
 const users = require("../models/model");
+const bcrypt = require("bcrypt");
 const GoogleStrategy = require( 'passport-google-oauth2' ).Strategy;
 require("dotenv").config();
 
@@ -47,4 +48,21 @@ async function check_user_password(user,password){
     }
 }
 
-module.exports = {check_user_email,check_user_password,passport};
+async function get_userByEmail(email_){
+    let user = await users.find({email:email_});
+    console.log(user);
+    return user;
+}
+
+async function get_userByName(username_){
+    let user = await users.find({username:username_});
+    return user;
+}
+
+module.exports = {
+    check_user_email,
+    check_user_password,
+    passport,
+    get_userByEmail,
+    get_userByName
+};
